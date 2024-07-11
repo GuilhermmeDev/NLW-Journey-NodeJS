@@ -5,7 +5,8 @@ import { prisma } from "../lib/prisma";
 import { getMailClient } from "../lib/mail";
 import { dayjs } from "../lib/dayjs";
 import nodemailer from "nodemailer"
-import { measureMemory } from "vm";
+import { ClientError } from "../errors/client-error";
+import { env } from "../env";
 
 export async function confirmTrip(app: FastifyInstance) {
     await app.withTypeProvider<ZodTypeProvider>().get('/trips/:tripId/confirm', {
@@ -31,7 +32,7 @@ export async function confirmTrip(app: FastifyInstance) {
         })
 
         if (!trip) {
-            throw new Error("Trip not found")
+            throw new ClientError("Trip not found")
         }
 
         await prisma.trip.update({
@@ -50,11 +51,10 @@ export async function confirmTrip(app: FastifyInstance) {
         const formattedEndDate = dayjs(trip.ends_at).format("LL")
         
         
-        const email = await getMailClient()
 
         await Promise.all([
             trip.participants.map(async (participant) => {
-            const confirmationLink = `http://localhost:3333/participants/${participant.id}/confirm`
+            const confirmationLink = `${env.API_BASE_URL}/participant/${participant.id}/confirm`
 
                 const message = await mail.sendMail({
                     from: {
